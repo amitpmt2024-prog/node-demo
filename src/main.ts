@@ -1,10 +1,20 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable validation
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   // Get MongoDB connection
   const connection = app.get<Connection>(getConnectionToken());
   // Log connection events
@@ -33,7 +43,11 @@ async function bootstrap() {
   console.log(`🔌 MongoDB connection state: ${states[state] || 'unknown'}`);
 
   await app.listen(process.env.PORT ?? 3000);
-  console.log(`🚀 Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`🏥 Health check available at: http://localhost:${process.env.PORT ?? 3000}/health`);
+  console.log(
+    `🚀 Application is running on: http://localhost:${process.env.PORT ?? 3000}`,
+  );
+  console.log(
+    `🏥 Health check available at: http://localhost:${process.env.PORT ?? 3000}/health`,
+  );
 }
-bootstrap();
+void bootstrap();
