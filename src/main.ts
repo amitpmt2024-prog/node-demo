@@ -3,9 +3,17 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable global response transformation
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  // Enable global exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Enable validation
   app.useGlobalPipes(
