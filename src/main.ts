@@ -1,8 +1,39 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Get MongoDB connection
+  const connection = app.get<Connection>(getConnectionToken());
+  // Log connection events
+  connection.on('connected', () => {
+    console.log('✅ MongoDB connected successfully');
+    console.log(`📊 Database: ${connection.db?.databaseName}`);
+    console.log(`🔗 Host: ${connection.host}`);
+  });
+
+  connection.on('error', (err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });
+
+  connection.on('disconnected', () => {
+    console.log('⚠️  MongoDB disconnected');
+  });
+
+  // Check initial connection state
+  const state = connection.readyState;
+  const states = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+  console.log(`🔌 MongoDB connection state: ${states[state] || 'unknown'}`);
+
   await app.listen(process.env.PORT ?? 3000);
+  console.log(`🚀 Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
+  console.log(`🏥 Health check available at: http://localhost:${process.env.PORT ?? 3000}/health`);
 }
 bootstrap();
