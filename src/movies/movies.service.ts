@@ -8,6 +8,7 @@ import { Model } from 'mongoose';
 import { Movie, MovieDocument } from './schemas/movie.schema';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
+import { QueryMovieDto } from './dto/query-movie.dto';
 
 @Injectable()
 export class MoviesService {
@@ -39,11 +40,56 @@ export class MoviesService {
     };
   }
 
-  async findAll(): Promise<{ movies: Movie[]; message: string }> {
-    const movies = await this.movieModel.find().sort({ createdAt: -1 }).exec();
+  async findAll(
+    queryDto: QueryMovieDto,
+  ): Promise<{
+    movies: Movie[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    message: string;
+  }> {
+    const { page = 1, limit = 10, search } = queryDto;
+
+    // Build search query
+    const searchQuery: any = {};
+    if (search) {
+      const searchConditions: any[] = [
+        { title: { $regex: search, $options: 'i' } },
+      ];
+
+      // If search is a number, also search by publishYear
+      if (!isNaN(Number(search))) {
+        searchConditions.push({ publishYear: Number(search) });
+      }
+
+      searchQuery.$or = searchConditions;
+    }
+
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await this.movieModel.countDocuments(searchQuery).exec();
+
+    // Get paginated movies
+    const movies = await this.movieModel
+      .find(searchQuery)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    // Calculate total pages
+    const totalPages = Math.ceil(total / limit);
 
     return {
       movies: movies.map((movie) => movie.toObject()),
+      total,
+      page,
+      limit,
+      totalPages,
       message: 'Movies retrieved successfully',
     };
   }

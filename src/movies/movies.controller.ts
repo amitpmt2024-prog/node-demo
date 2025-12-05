@@ -9,10 +9,12 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
+import { QueryMovieDto } from './dto/query-movie.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('movies')
@@ -27,18 +29,21 @@ export class MoviesController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async findAll() {
-    return this.moviesService.findAll();
+  async findAll(@Query() queryDto: QueryMovieDto) {
+    return this.moviesService.findAll(queryDto);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async findOne(@Param('id') id: string) {
     return this.moviesService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async update(
     @Param('id') id: string,
