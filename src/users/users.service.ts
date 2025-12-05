@@ -101,14 +101,18 @@ export class UsersService {
     const user = await this.userModel.findOne(query);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email/userName or password');
+      throw new UnauthorizedException(
+        'email or username is incorrect. Please try again.',
+      );
     }
 
     // Compare password using bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email/userName or password');
+      throw new UnauthorizedException(
+        'email or username is incorrect. Please try again.',
+      );
     }
 
     // Generate JWT token

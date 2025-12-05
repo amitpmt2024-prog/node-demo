@@ -48,22 +48,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error = 'Internal Server Error';
     }
 
-    // Ensure message is always an array for validation errors
-    if (Array.isArray(message)) {
-      message = message;
-    } else {
-      message = [message];
-    }
+    // Ensure message is always a string (not array) for consistency
+    const finalMessage = Array.isArray(message) ? message[0] : message;
 
-    const errorResponse: ApiErrorResponse = {
+    // Return consistent format similar to success response
+    response.status(status).json({
       success: false,
       statusCode: status,
-      message: message.length === 1 ? message[0] : message,
+      message: finalMessage,
+      data: null,
       error: error || HttpStatus[status] || 'Error',
       timestamp: new Date().toISOString(),
       path: request.url,
-    };
-
-    response.status(status).json(errorResponse);
+    });
   }
 }
