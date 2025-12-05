@@ -8,9 +8,6 @@ export class User {
   @Prop({ required: false, unique: true, sparse: true })
   email?: string;
 
-  @Prop({ required: false, unique: true, sparse: true })
-  userName?: string;
-
   @Prop({ required: true })
   password: string;
 }

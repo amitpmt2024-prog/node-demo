@@ -21,16 +21,15 @@ export class UsersService {
   async register(
     registerDto: RegisterDto,
   ): Promise<{ user: Partial<User>; message: string }> {
-    const { email, userName, password } = registerDto;
+    const { email, password } = registerDto;
 
-    // Validate that either email or userName is provided
-    if (!email && !userName) {
-      throw new ConflictException('Email or userName is required');
+    if (!email) {
+      throw new ConflictException('Email is required');
     }
 
     // Check if user already exists
     const existingUserQuery: {
-      $or: Array<{ email?: string; userName?: string }>;
+      $or: Array<{ email?: string }>;
     } = {
       $or: [],
     };
@@ -38,18 +37,7 @@ export class UsersService {
     if (email) {
       existingUserQuery.$or.push({ email });
     }
-
-    if (userName) {
-      existingUserQuery.$or.push({ userName });
-    }
-
     const existingUser = await this.userModel.findOne(existingUserQuery);
-
-    if (existingUser) {
-      throw new ConflictException(
-        'User with this email or userName already exists',
-      );
-    }
 
     // Hash password before saving
     const saltRounds = 10;
@@ -58,7 +46,6 @@ export class UsersService {
     // Create new user with hashed password
     const newUser = new this.userModel({
       email,
-      userName,
       password: hashedPassword,
     });
 
@@ -77,32 +64,14 @@ export class UsersService {
   async login(
     loginDto: LoginDto,
   ): Promise<{ user: Partial<User>; accessToken: string; message: string }> {
-    const { email, userName, password } = loginDto;
+    const { email, password } = loginDto;
 
-    // Validate that either email or userName is provided
-    if (!email && !userName) {
-      throw new UnauthorizedException('Email or userName is required');
-    }
-
-    // Build query to find user by email or userName
-    const query: { $or: Array<{ email?: string; userName?: string }> } = {
-      $or: [],
-    };
-
-    if (email) {
-      query.$or.push({ email });
-    }
-
-    if (userName) {
-      query.$or.push({ userName });
-    }
-
-    // Find user by email or userName
-    const user = await this.userModel.findOne(query);
+    // Find user by email
+    const user = await this.userModel.findOne({ email });
 
     if (!user) {
       throw new UnauthorizedException(
-        'email or username is incorrect. Please try again.',
+        'Email or password is incorrect. Please try again.',
       );
     }
 
@@ -111,7 +80,7 @@ export class UsersService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException(
-        'email or username is incorrect. Please try again.',
+        'Email or password is incorrect. Please try again.',
       );
     }
 
@@ -119,7 +88,6 @@ export class UsersService {
     const payload = {
       userId: user._id.toString(),
       email: user.email,
-      userName: user.userName,
     };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const accessToken = this.jwtService.sign(payload);

@@ -53,6 +53,7 @@ export class MoviesController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     return this.moviesService.remove(id);

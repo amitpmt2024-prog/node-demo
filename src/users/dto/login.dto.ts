@@ -1,14 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength, IsEmail } from 'class-validator';
 
 export class LoginDto {
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  userName?: string;
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })

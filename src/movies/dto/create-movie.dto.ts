@@ -3,14 +3,17 @@ import {
   IsNotEmpty,
   IsString,
   IsNumber,
-  IsUrl,
   Min,
   Max,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateMovieDto {
   @IsString()
   @IsNotEmpty({ message: 'Title is required' })
+  @MinLength(1, { message: 'Title cannot be empty' })
+  @MaxLength(200, { message: 'Title cannot exceed 200 characters' })
   title: string;
 
   @IsNumber()
@@ -21,7 +24,7 @@ export class CreateMovieDto {
   @IsNotEmpty({ message: 'Publish year is required' })
   publishYear: number;
 
-  @IsUrl({}, { message: 'Image URL must be a valid URL' })
+  @IsString()
   @IsNotEmpty({ message: 'Image URL is required' })
   imageURL: string;
 }
