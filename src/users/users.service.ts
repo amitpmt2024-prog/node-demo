@@ -21,23 +21,14 @@ export class UsersService {
   async register(
     registerDto: RegisterDto,
   ): Promise<{ user: Partial<User>; message: string }> {
-    const { email, password } = registerDto;
+    const { name, email, password } = registerDto;
 
-    if (!email) {
-      throw new ConflictException('Email is required');
+    // Check if user already exists by email
+    const existingUser = await this.userModel.findOne({ email });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
     }
-
-    // Check if user already exists
-    const existingUserQuery: {
-      $or: Array<{ email?: string }>;
-    } = {
-      $or: [],
-    };
-
-    if (email) {
-      existingUserQuery.$or.push({ email });
-    }
-    const existingUser = await this.userModel.findOne(existingUserQuery);
 
     // Hash password before saving
     const saltRounds = 10;
@@ -45,6 +36,7 @@ export class UsersService {
 
     // Create new user with hashed password
     const newUser = new this.userModel({
+      name,
       email,
       password: hashedPassword,
     });
