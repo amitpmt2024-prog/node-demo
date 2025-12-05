@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
 import { LoginDto } from './dto/login.dto';
@@ -12,7 +13,10 @@ import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private jwtService: JwtService,
+  ) {}
 
   async register(
     registerDto: RegisterDto,
@@ -72,7 +76,7 @@ export class UsersService {
 
   async login(
     loginDto: LoginDto,
-  ): Promise<{ user: Partial<User>; message: string }> {
+  ): Promise<{ user: Partial<User>; accessToken: string; message: string }> {
     const { email, userName, password } = loginDto;
 
     // Validate that either email or userName is provided
@@ -107,12 +111,30 @@ export class UsersService {
       throw new UnauthorizedException('Invalid email/userName or password');
     }
 
-    // Return user without password
+    // Generate JWT token
+    const payload = {
+      userId: user._id.toString(),
+      email: user.email,
+      userName: user.userName,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const accessToken = this.jwtService.sign(payload);
+
+    // Return user without password, but with accessToken
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user.toObject();
 
+    // Add accessToken to user object
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const userWithToken: Partial<User> & { accessToken: string } = {
+      ...userWithoutPassword,
+      accessToken,
+    } as Partial<User> & { accessToken: string };
+
     return {
-      user: userWithoutPassword,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      user: userWithToken,
+      accessToken,
       message: 'Login successful',
     };
   }
