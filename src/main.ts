@@ -30,13 +30,19 @@ async function bootstrap() {
       index: false,
     });
     // Serve index.html for all non-API routes (SPA fallback)
+    // Use use() instead of get() for catch-all route
     const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.get('*', (req: Request, res: Response, next: NextFunction) => {
-      if (!req.path.startsWith('/api') && !req.path.startsWith('/images')) {
-        res.sendFile(join(frontendDistPath, 'index.html'));
-      } else {
-        next();
+    expressApp.use((req: Request, res: Response, next: NextFunction) => {
+      // Skip if it's an API route, image route, or already handled static file
+      if (req.path.startsWith('/api') || req.path.startsWith('/images')) {
+        return next();
       }
+      // Skip if it's a file request (has extension)
+      if (req.path.includes('.')) {
+        return next();
+      }
+      // Serve index.html for SPA routes
+      res.sendFile(join(frontendDistPath, 'index.html'));
     });
   }
 

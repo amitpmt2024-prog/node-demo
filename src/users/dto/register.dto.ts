@@ -4,6 +4,7 @@ import {
   MinLength,
   IsEmail,
   MaxLength,
+  Matches,
 } from 'class-validator';
 
 export class RegisterDto {
@@ -20,5 +21,6 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
   @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/[a-zA-Z]/, { message: 'Password must contain at least one alphabet (letter)' })
   password: string;
 }
