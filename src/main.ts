@@ -49,8 +49,6 @@ async function bootstrap() {
   // Log connection events
   connection.on('connected', () => {
     console.log('✅ MongoDB connected successfully');
-    console.log(`📊 Database: ${connection.db?.databaseName}`);
-    console.log(`🔗 Host: ${connection.host}`);
   });
 
   connection.on('error', (err) => {

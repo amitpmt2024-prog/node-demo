@@ -44,8 +44,8 @@ export class UsersService {
     const savedUser = await newUser.save();
 
     // Return user without password
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = savedUser.toObject();
+    const userObject = savedUser.toObject();
+    const { password: _password, ...userWithoutPassword } = userObject;
 
     return {
       user: userWithoutPassword,
@@ -81,22 +81,19 @@ export class UsersService {
       userId: user._id.toString(),
       email: user.email,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload) as string;
 
     // Return user without password, but with accessToken
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user.toObject();
+    const userObject = user.toObject();
+    const { password: _password, ...userWithoutPassword } = userObject;
 
     // Add accessToken to user object
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const userWithToken: Partial<User> & { accessToken: string } = {
       ...userWithoutPassword,
       accessToken,
-    } as Partial<User> & { accessToken: string };
+    };
 
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       user: userWithToken,
       accessToken,
       message: 'Login successful',

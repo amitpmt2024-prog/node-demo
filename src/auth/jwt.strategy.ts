@@ -5,11 +5,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../users/schemas/user.schema';
 
+interface JwtPayload {
+  userId: string;
+  email: string;
+  iat?: number;
+  exp?: number;
+}
+
 @Injectable()
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -17,8 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  async validate(payload: JwtPayload) {
     const { userId } = payload;
     const user = await this.userModel.findById(userId).exec();
 
@@ -26,8 +30,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user.toObject();
+    const userObject = user.toObject();
+    const { password: _password, ...userWithoutPassword } = userObject;
     return userWithoutPassword;
   }
 }

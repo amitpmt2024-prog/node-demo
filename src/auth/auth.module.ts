@@ -8,7 +8,6 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 @Module({
   imports: [
     PassportModule,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     JwtModule.register({
       secret: '222fed36629593d6a11d4f19daca0576',
       signOptions: { expiresIn: '24h' },
