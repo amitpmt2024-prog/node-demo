@@ -44,7 +44,7 @@ async function bootstrap() {
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : [
-        'http://localhost:5173', // Vite default port
+        'http://3.110.108.83', // Vite default port
         'http://localhost:3000', // React dev server
         'http://localhost:5174', // Alternative Vite port
         'http://127.0.0.1:5173',
