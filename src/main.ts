@@ -7,24 +7,52 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { existsSync } from 'fs';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve static files from public folder
+  // Set global API prefix
+  app.setGlobalPrefix('api');
+
+  // Serve static files from public folder (without /api prefix)
   app.useStaticAssets(join(__dirname, '..', 'public'), {
     prefix: '/',
   });
 
+  // Serve frontend build in production (if dist folder exists)
+  const frontendDistPath = join(__dirname, '..', '..', 'react', 'dist');
+  if (existsSync(frontendDistPath)) {
+    // Serve static assets from frontend dist
+    app.useStaticAssets(frontendDistPath, {
+      prefix: '/',
+      index: false,
+    });
+    // Serve index.html for all non-API routes (SPA fallback)
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.get('*', (req: Request, res: Response, next: NextFunction) => {
+      if (!req.path.startsWith('/api') && !req.path.startsWith('/images')) {
+        res.sendFile(join(frontendDistPath, 'index.html'));
+      } else {
+        next();
+      }
+    });
+  }
+
   // Enable CORS
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : [
+        'http://localhost:5173', // Vite default port
+        'http://localhost:3000', // React dev server
+        'http://localhost:5174', // Alternative Vite port
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ];
+
   app.enableCors({
-    origin: [
-      'http://localhost:5173', // Vite default port
-      'http://localhost:3000', // React dev server
-      'http://localhost:5174', // Alternative Vite port
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-    ],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -69,12 +97,12 @@ async function bootstrap() {
   };
   console.log(`🔌 MongoDB connection state: ${states[state] || 'unknown'}`);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(
-    `🚀 Application is running on: http://localhost:${process.env.PORT ?? 3000}`,
-  );
-  console.log(
-    `🏥 Health check available at: http://localhost:${process.env.PORT ?? 3000}/health`,
-  );
+  const port = process.env.PORT ?? 3000;
+  const host = process.env.HOST ?? '0.0.0.0';
+
+  await app.listen(port, host);
+  console.log(`🚀 Application is running on: http://${host}:${port}`);
+  console.log(`🔌 API endpoints available at: http://${host}:${port}/api`);
+  console.log(`🏥 Health check available at: http://${host}:${port}/api`);
 }
 void bootstrap();
