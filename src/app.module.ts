@@ -10,7 +10,8 @@ import { UploadModule } from './upload/upload.module';
 @Module({
   imports: [
     MongooseModule.forRoot(
-      'mongodb+srv://testuser:JBkUSvgwKzaGNcV0@semicolon.xehtz.mongodb.net/assessment',
+      process.env.MONGODB_URI ||
+        'mongodb+srv://testuser:JBkUSvgwKzaGNcV0@semicolon.xehtz.mongodb.net/assessment',
     ),
     UsersModule,
     MoviesModule,

@@ -11,11 +11,13 @@ import { Movie, MovieDocument } from './schemas/movie.schema';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { QueryMovieDto } from './dto/query-movie.dto';
+import { S3Service } from '../upload/s3.service';
 
 @Injectable()
 export class MoviesService {
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<MovieDocument>,
+    private readonly s3Service: S3Service,
   ) {}
 
   /**
@@ -68,15 +70,31 @@ export class MoviesService {
   }
 
   /**
-   * Helper method to delete image file from filesystem
+   * Helper method to delete image file from filesystem or S3
    */
-  private deleteImageFile(imagePath: string | null): void {
-    if (!imagePath) {
-      console.log('No image path provided for deletion');
+  private async deleteImageFile(imageURL: string | undefined): Promise<void> {
+    if (!imageURL) {
+      console.log('No image URL provided for deletion');
       return;
     }
 
-    console.log(`Attempting to delete image file: ${imagePath}`);
+    // Check if it's an S3 URL
+    if (this.s3Service.isS3Url(imageURL)) {
+      const s3Key = this.s3Service.extractKeyFromUrl(imageURL);
+      if (s3Key) {
+        await this.s3Service.deleteFile(s3Key);
+        return;
+      }
+    }
+
+    // Fallback to local file system deletion (for backward compatibility)
+    const imagePath = this.getImageFilePath(imageURL);
+    if (!imagePath) {
+      console.log('No image path resolved for deletion');
+      return;
+    }
+
+    console.log(`Attempting to delete local image file: ${imagePath}`);
     console.log(`File exists: ${existsSync(imagePath)}`);
 
     // Extract filename for fallback attempts
@@ -100,17 +118,17 @@ export class MoviesService {
       if (existsSync(path)) {
         try {
           unlinkSync(path);
-          console.log(`✅ Successfully deleted image file: ${path}`);
+          console.log(`✅ Successfully deleted local image file: ${path}`);
           return; // Successfully deleted, exit
         } catch (error) {
-          console.error(`❌ Failed to delete image file: ${path}`, error);
+          console.error(`❌ Failed to delete local image file: ${path}`, error);
           // Continue to next path
         }
       }
     }
 
     // If we get here, file wasn't found at any path
-    console.warn(`⚠️ Image file not found at any of these paths:`);
+    console.warn(`⚠️ Local image file not found at any of these paths:`);
     pathsToTry.forEach((path) => console.warn(`  - ${path}`));
   }
 
@@ -219,9 +237,7 @@ export class MoviesService {
     // If a new image is being uploaded, delete the old image
     if (updateMovieDto.imageURL && updateMovieDto.imageURL !== existingMovie.imageURL) {
       console.log(`Updating image: Old URL: ${existingMovie.imageURL}, New URL: ${updateMovieDto.imageURL}`);
-      const oldImagePath = this.getImageFilePath(existingMovie.imageURL);
-      console.log(`Old image path resolved to: ${oldImagePath}`);
-      this.deleteImageFile(oldImagePath);
+      await this.deleteImageFile(existingMovie.imageURL);
     }
 
     // If title or publishYear is being updated, check for duplicates
@@ -274,16 +290,12 @@ export class MoviesService {
       throw new NotFoundException(`Movie with ID ${id} not found`);
     }
 
-    // Get the image file path before deleting the movie
-    console.log(`Deleting movie with imageURL: ${movie.imageURL}`);
-    const imagePath = this.getImageFilePath(movie.imageURL);
-    console.log(`Image path resolved to: ${imagePath}`);
-
-    // Delete the movie from database
+    // Delete the movie from database first
     await this.movieModel.findByIdAndDelete(id).exec();
 
-    // Delete the image file if it exists
-    this.deleteImageFile(imagePath);
+    // Delete the image file from S3 or local filesystem
+    console.log(`Deleting image with URL: ${movie.imageURL}`);
+    await this.deleteImageFile(movie.imageURL);
 
     return {
       message: 'Movie deleted successfully',

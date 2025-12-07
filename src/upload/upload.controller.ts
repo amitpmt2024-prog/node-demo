@@ -9,28 +9,21 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { S3Service } from './s3.service';
 
 @Controller('upload')
 export class UploadController {
+  constructor(private readonly s3Service: S3Service) {}
+
   @Post('image')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('image', {
-      storage: diskStorage({
-        destination: join(__dirname, '..', '..', 'public', 'images'),
-        filename: (req, file, cb) => {
-          // Generate unique filename: timestamp-randomnumber-originalname
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `${uniqueSuffix}${ext}`;
-          cb(null, filename);
-        },
-      }),
+      storage: memoryStorage(), // Store in memory instead of disk
       fileFilter: (req, file, cb) => {
         // Accept only image files
         if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
@@ -54,9 +47,6 @@ export class UploadController {
       encoding: string;
       mimetype: string;
       size: number;
-      destination: string;
-      filename: string;
-      path: string;
       buffer: Buffer;
     } | undefined,
   ) {
@@ -64,12 +54,26 @@ export class UploadController {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Return the URL path to access the image
-    const imageUrl = `/images/${file.filename}`;
+    if (!file.buffer) {
+      throw new BadRequestException('File buffer is missing');
+    }
+
+    // Generate unique filename: timestamp-randomnumber-originalname
+    const uniqueSuffix =
+      Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = extname(file.originalname);
+    const filename = `${uniqueSuffix}${ext}`;
+
+    // Upload to S3
+    const { url } = await this.s3Service.uploadFile(
+      file.buffer,
+      filename,
+      file.mimetype,
+    );
 
     return {
-      imageURL: imageUrl,
-      filename: file.filename,
+      imageURL: url,
+      filename: filename,
       message: 'Image uploaded successfully',
     };
   }

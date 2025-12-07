@@ -1,3 +1,4 @@
+import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -9,6 +10,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { Request, Response, NextFunction } from 'express';
+
+// Load environment variables from .env file
+config();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -51,10 +55,7 @@ async function bootstrap() {
     ? process.env.ALLOWED_ORIGINS.split(',')
     : [
         'http://3.110.108.83', // Vite default port
-        'http://localhost:3000', // React dev server
-        'http://localhost:5174', // Alternative Vite port
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
+        'http://localhost:3000',
       ];
 
   app.enableCors({

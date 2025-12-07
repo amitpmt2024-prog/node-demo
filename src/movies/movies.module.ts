@@ -4,11 +4,13 @@ import { MoviesController } from './movies.controller';
 import { MoviesService } from './movies.service';
 import { Movie, MovieSchema } from './schemas/movie.schema';
 import { AuthModule } from '../auth/auth.module';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Movie.name, schema: MovieSchema }]),
     AuthModule,
+    UploadModule,
   ],
   controllers: [MoviesController],
   providers: [MoviesService],
