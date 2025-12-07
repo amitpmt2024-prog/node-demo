@@ -34,7 +34,6 @@ export class MoviesController {
   async findAll(@Query() queryDto: QueryMovieDto) {
     return this.moviesService.findAll(queryDto);
   }
-
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
