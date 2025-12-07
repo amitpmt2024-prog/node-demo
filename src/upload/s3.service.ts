@@ -16,15 +16,37 @@ export class S3Service {
     this.region = process.env.AWS_REGION || 'us-east-1';
     this.bucketName = process.env.AWS_S3_BUCKET_NAME || 'assement-practical';
 
+    // Validate AWS credentials
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!accessKeyId || !secretAccessKey) {
+      this.logger.error(
+        'AWS credentials are missing! Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env file',
+      );
+      throw new Error(
+        'AWS credentials are not configured. Please check your .env file.',
+      );
+    }
+
+    if (!this.bucketName) {
+      this.logger.error(
+        'AWS S3 bucket name is missing! Please set AWS_S3_BUCKET_NAME in .env file',
+      );
+      throw new Error(
+        'AWS S3 bucket name is not configured. Please check your .env file.',
+      );
+    }
+
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
       },
     });
 
-    this.logger.log(`S3 Service initialized for bucket: ${this.bucketName}`);
+    this.logger.log(`S3 Service initialized for bucket: ${this.bucketName} in region: ${this.region}`);
   }
 
   /**
@@ -42,24 +64,67 @@ export class S3Service {
     try {
       const key = `images/${filename}`;
 
-      const command = new PutObjectCommand({
+      // Build command without ACL first (for buckets with ACLs disabled)
+      // If ACLs are enabled, you can add ACL: 'public-read' to the command
+      const commandParams: any = {
         Bucket: this.bucketName,
         Key: key,
         Body: file,
         ContentType: mimetype,
-        ACL: 'public-read', // Make the file publicly accessible
+      };
+
+      // Try with ACL first, if it fails, retry without ACL
+      // This handles both buckets with ACLs enabled and disabled
+      let command = new PutObjectCommand({
+        ...commandParams,
+        ACL: 'public-read',
       });
 
-      await this.s3Client.send(command);
+      try {
+        await this.s3Client.send(command);
+      } catch (aclError: any) {
+        // If ACL error (bucket has ACLs disabled), retry without ACL
+        if (
+          aclError.name === 'AccessControlListNotSupported' ||
+          aclError.code === 'AccessControlListNotSupported' ||
+          aclError.message?.includes('ACL') ||
+          aclError.message?.includes('access control list')
+        ) {
+          this.logger.warn(
+            'Bucket has ACLs disabled, uploading without ACL. Ensure bucket policy allows public read access.',
+          );
+          command = new PutObjectCommand(commandParams);
+          await this.s3Client.send(command);
+        } else {
+          throw aclError;
+        }
+      }
 
       // Construct the public URL
+      // Note: For buckets with ACLs disabled, ensure bucket policy allows public read
       const url = `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${key}`;
 
       this.logger.log(`File uploaded successfully: ${key}`);
+      this.logger.log(`Public URL: ${url}`);
       return { key, url };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Error uploading file to S3:', error);
-      throw error;
+      
+      // Provide more helpful error messages
+      if (error.name === 'InvalidAccessKeyId' || error.code === 'InvalidAccessKeyId') {
+        throw new Error('Invalid AWS Access Key ID. Please check your AWS_ACCESS_KEY_ID in .env file.');
+      }
+      if (error.name === 'SignatureDoesNotMatch' || error.code === 'SignatureDoesNotMatch') {
+        throw new Error('Invalid AWS Secret Access Key. Please check your AWS_SECRET_ACCESS_KEY in .env file.');
+      }
+      if (error.name === 'NoSuchBucket' || error.code === 'NoSuchBucket') {
+        throw new Error(`S3 bucket "${this.bucketName}" does not exist. Please check your AWS_S3_BUCKET_NAME in .env file.`);
+      }
+      if (error.name === 'AccessDenied' || error.code === 'AccessDenied') {
+        throw new Error(`Access denied to S3 bucket "${this.bucketName}". Please check your AWS IAM permissions.`);
+      }
+      
+      throw new Error(`S3 upload failed: ${error.message || error}`);
     }
   }
 
