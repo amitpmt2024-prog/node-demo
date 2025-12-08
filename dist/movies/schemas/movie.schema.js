@@ -15,6 +15,7 @@ let Movie = class Movie {
     title;
     publishYear;
     imageURL;
+    createdBy;
 };
 exports.Movie = Movie;
 __decorate([
@@ -29,6 +30,10 @@ __decorate([
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", String)
 ], Movie.prototype, "imageURL", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ required: true }),
+    __metadata("design:type", String)
+], Movie.prototype, "createdBy", void 0);
 exports.Movie = Movie = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], Movie);

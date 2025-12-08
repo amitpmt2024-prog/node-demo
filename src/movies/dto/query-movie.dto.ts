@@ -11,7 +11,7 @@ export class QueryMovieDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(1, { message: 'Limit must be at least 1' })
+  @Min(8, { message: 'Limit must be at least 10' })
   @Max(100, { message: 'Limit cannot exceed 100' })
   limit?: number = 10;
 

@@ -134,11 +134,13 @@ export class MoviesService {
 
   async create(
     createMovieDto: CreateMovieDto,
+    userId: string,
   ): Promise<{ movie: Movie; message: string }> {
-    // Check if movie with same title and year already exists
+    // Check if movie with same title and year already exists for this user
     const existingMovie = await this.movieModel.findOne({
       title: createMovieDto.title,
       publishYear: createMovieDto.publishYear,
+      createdBy: userId,
     });
 
     if (existingMovie) {
@@ -147,7 +149,10 @@ export class MoviesService {
       );
     }
 
-    const newMovie = new this.movieModel(createMovieDto);
+    const newMovie = new this.movieModel({
+      ...createMovieDto,
+      createdBy: userId,
+    });
     const savedMovie = await newMovie.save();
 
     return {
@@ -158,6 +163,7 @@ export class MoviesService {
 
   async findAll(
     queryDto: QueryMovieDto,
+    userId: string,
   ): Promise<{
     movies: Movie[];
     total: number;
@@ -168,8 +174,14 @@ export class MoviesService {
   }> {
     const { page = 1, limit = 10, search } = queryDto;
 
-    // Build search query
-    const searchQuery: any = {};
+    // Ensure minimum limit of 10
+    const finalLimit = Math.max(limit, 10);
+
+    // Build search query - filter by createdBy first
+    const searchQuery: any = {
+      createdBy: userId,
+    };
+
     if (search) {
       const searchConditions: any[] = [
         { title: { $regex: search, $options: 'i' } },
@@ -184,7 +196,7 @@ export class MoviesService {
     }
 
     // Calculate skip for pagination
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * finalLimit;
 
     // Get total count for pagination
     const total = await this.movieModel.countDocuments(searchQuery).exec();
@@ -194,24 +206,27 @@ export class MoviesService {
       .find(searchQuery)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
+      .limit(finalLimit)
       .exec();
 
     // Calculate total pages
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / finalLimit);
 
     return {
       movies: movies.map((movie) => movie.toObject()),
       total,
       page,
-      limit,
+      limit: finalLimit,
       totalPages,
       message: 'Movies retrieved successfully',
     };
   }
 
-  async findOne(id: string): Promise<{ movie: Movie; message: string }> {
-    const movie = await this.movieModel.findById(id).exec();
+  async findOne(id: string, userId: string): Promise<{ movie: Movie; message: string }> {
+    const movie = await this.movieModel.findOne({
+      _id: id,
+      createdBy: userId,
+    }).exec();
 
     if (!movie) {
       throw new NotFoundException(`Movie with ID ${id} not found`);
@@ -226,9 +241,13 @@ export class MoviesService {
   async update(
     id: string,
     updateMovieDto: UpdateMovieDto,
+    userId: string,
   ): Promise<{ movie: Movie; message: string }> {
-    // Check if movie exists
-    const existingMovie = await this.movieModel.findById(id).exec();
+    // Check if movie exists and belongs to the user
+    const existingMovie = await this.movieModel.findOne({
+      _id: id,
+      createdBy: userId,
+    }).exec();
 
     if (!existingMovie) {
       throw new NotFoundException(`Movie with ID ${id} not found`);
@@ -240,14 +259,16 @@ export class MoviesService {
       await this.deleteImageFile(existingMovie.imageURL);
     }
 
-    // If title or publishYear is being updated, check for duplicates
+    // If title or publishYear is being updated, check for duplicates (only for this user)
     if (updateMovieDto.title || updateMovieDto.publishYear) {
       const duplicateQuery: {
         title?: string;
         publishYear?: number;
+        createdBy?: string;
         _id?: { $ne: string };
       } = {
         _id: { $ne: id },
+        createdBy: userId,
       };
 
       // Use the updated values or existing values
@@ -282,9 +303,12 @@ export class MoviesService {
     };
   }
 
-  async remove(id: string): Promise<{ message: string }> {
-    // Find the movie first to get the image URL
-    const movie = await this.movieModel.findById(id).exec();
+  async remove(id: string, userId: string): Promise<{ message: string }> {
+    // Find the movie first to get the image URL and verify ownership
+    const movie = await this.movieModel.findOne({
+      _id: id,
+      createdBy: userId,
+    }).exec();
 
     if (!movie) {
       throw new NotFoundException(`Movie with ID ${id} not found`);

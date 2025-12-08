@@ -13,6 +13,9 @@ export class Movie {
 
   @Prop({ required: true })
   imageURL: string;
+
+  @Prop({ required: true })
+  createdBy: string;
 }
 
 export const MovieSchema = SchemaFactory.createForClass(Movie);

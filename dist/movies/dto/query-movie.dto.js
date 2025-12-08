@@ -29,7 +29,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),
     (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(1, { message: 'Limit must be at least 1' }),
+    (0, class_validator_1.Min)(8, { message: 'Limit must be at least 10' }),
     (0, class_validator_1.Max)(100, { message: 'Limit cannot exceed 100' }),
     __metadata("design:type", Number)
 ], QueryMovieDto.prototype, "limit", void 0);

@@ -102,24 +102,31 @@ let MoviesService = class MoviesService {
         console.warn(`⚠️ Local image file not found at any of these paths:`);
         pathsToTry.forEach((path) => console.warn(`  - ${path}`));
     }
-    async create(createMovieDto) {
+    async create(createMovieDto, userId) {
         const existingMovie = await this.movieModel.findOne({
             title: createMovieDto.title,
             publishYear: createMovieDto.publishYear,
+            createdBy: userId,
         });
         if (existingMovie) {
             throw new common_1.ConflictException('Movie with this title and publish year already exists');
         }
-        const newMovie = new this.movieModel(createMovieDto);
+        const newMovie = new this.movieModel({
+            ...createMovieDto,
+            createdBy: userId,
+        });
         const savedMovie = await newMovie.save();
         return {
             movie: savedMovie.toObject(),
             message: 'Movie created successfully',
         };
     }
-    async findAll(queryDto) {
+    async findAll(queryDto, userId) {
         const { page = 1, limit = 10, search } = queryDto;
-        const searchQuery = {};
+        const finalLimit = Math.max(limit, 10);
+        const searchQuery = {
+            createdBy: userId,
+        };
         if (search) {
             const searchConditions = [
                 { title: { $regex: search, $options: 'i' } },
@@ -129,26 +136,29 @@ let MoviesService = class MoviesService {
             }
             searchQuery.$or = searchConditions;
         }
-        const skip = (page - 1) * limit;
+        const skip = (page - 1) * finalLimit;
         const total = await this.movieModel.countDocuments(searchQuery).exec();
         const movies = await this.movieModel
             .find(searchQuery)
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit)
+            .limit(finalLimit)
             .exec();
-        const totalPages = Math.ceil(total / limit);
+        const totalPages = Math.ceil(total / finalLimit);
         return {
             movies: movies.map((movie) => movie.toObject()),
             total,
             page,
-            limit,
+            limit: finalLimit,
             totalPages,
             message: 'Movies retrieved successfully',
         };
     }
-    async findOne(id) {
-        const movie = await this.movieModel.findById(id).exec();
+    async findOne(id, userId) {
+        const movie = await this.movieModel.findOne({
+            _id: id,
+            createdBy: userId,
+        }).exec();
         if (!movie) {
             throw new common_1.NotFoundException(`Movie with ID ${id} not found`);
         }
@@ -157,8 +167,11 @@ let MoviesService = class MoviesService {
             message: 'Movie retrieved successfully',
         };
     }
-    async update(id, updateMovieDto) {
-        const existingMovie = await this.movieModel.findById(id).exec();
+    async update(id, updateMovieDto, userId) {
+        const existingMovie = await this.movieModel.findOne({
+            _id: id,
+            createdBy: userId,
+        }).exec();
         if (!existingMovie) {
             throw new common_1.NotFoundException(`Movie with ID ${id} not found`);
         }
@@ -169,6 +182,7 @@ let MoviesService = class MoviesService {
         if (updateMovieDto.title || updateMovieDto.publishYear) {
             const duplicateQuery = {
                 _id: { $ne: id },
+                createdBy: userId,
             };
             const titleToCheck = updateMovieDto.title ?? existingMovie.title;
             const yearToCheck = updateMovieDto.publishYear ?? existingMovie.publishYear;
@@ -190,8 +204,11 @@ let MoviesService = class MoviesService {
             message: 'Movie updated successfully',
         };
     }
-    async remove(id) {
-        const movie = await this.movieModel.findById(id).exec();
+    async remove(id, userId) {
+        const movie = await this.movieModel.findOne({
+            _id: id,
+            createdBy: userId,
+        }).exec();
         if (!movie) {
             throw new common_1.NotFoundException(`Movie with ID ${id} not found`);
         }

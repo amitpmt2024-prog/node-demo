@@ -4,6 +4,7 @@ export declare class Movie {
     title: string;
     publishYear: number;
     imageURL: string;
+    createdBy: string;
 }
 export declare const MovieSchema: import("mongoose").Schema<Movie, import("mongoose").Model<Movie, any, any, any, Document<unknown, any, Movie, any, import("mongoose").DefaultSchemaOptions> & Movie & {
     _id: import("mongoose").Types.ObjectId;
@@ -37,6 +38,15 @@ export declare const MovieSchema: import("mongoose").Schema<Movie, import("mongo
         id: string;
     }> | undefined;
     imageURL?: import("mongoose").SchemaDefinitionProperty<string, Movie, Document<unknown, {}, Movie, {
+        id: string;
+    }, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & Omit<Movie & {
+        _id: import("mongoose").Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    createdBy?: import("mongoose").SchemaDefinitionProperty<string, Movie, Document<unknown, {}, Movie, {
         id: string;
     }, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & Omit<Movie & {
         _id: import("mongoose").Types.ObjectId;
