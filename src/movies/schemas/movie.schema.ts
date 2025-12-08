@@ -7,7 +7,6 @@ export type MovieDocument = Movie & Document;
 export class Movie {
   @Prop({ required: true })
   title: string;
-
   @Prop({ required: true })
   publishYear: number;
 
